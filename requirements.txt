@@ -10,5 +10,4 @@ nltk
 assemblyai
 transformers
 spacy
-string
 heapq
