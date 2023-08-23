@@ -10,6 +10,6 @@ nltk
 assemblyai
 transformers
 spacy
-PyTorch
+torch
 TensorFlow
 Flax
