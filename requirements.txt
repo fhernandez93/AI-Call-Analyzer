@@ -7,10 +7,6 @@ seaborn
 matplotlib
 plotly
 nltk
-collections
-sqlite3
-datetime
-time
 assemblyai
 transformers
 spacy
