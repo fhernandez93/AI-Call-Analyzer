@@ -20,6 +20,7 @@ from spacy.lang.en.stop_words import STOP_WORDS
 from string import punctuation
 from heapq import nlargest
 import sqlite3
+import streamlit as st
 
 conn = sqlite3.connect('OPTcallsAnalytics.db')
 cursor = conn.cursor()
@@ -30,7 +31,7 @@ class voiceTranscription:
     """
     def __init__(self, file_name):
         self.file_name = file_name
-        self.api_key = KEY
+        self.api_key = st.secrets.KEY
        
 
     def getTranscriptionObject(self): 
