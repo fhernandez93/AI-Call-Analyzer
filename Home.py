@@ -97,7 +97,7 @@ if uploaded_file:
 
     else:
         extension = os.path.splitext(uploaded_file.name)[1]
-        with open("./temp/temp_file"+extension, "wb") as f:
+        with open("./static/temp_file"+extension, "wb") as f:
                 f.write(uploaded_file.read())
 
         if 'sentiment' not in st.session_state:
@@ -119,7 +119,7 @@ if uploaded_file:
             else: 
                 #####Relevant functions for transcription######
 
-                transcriptionClass = vr.voiceTranscription("./temp/temp_file"+extension)
+                transcriptionClass = vr.voiceTranscription("./static/temp_file"+extension)
 
                 # Once done, remove the temporary file if you wish
                 ###########
@@ -255,7 +255,7 @@ if uploaded_file:
 
 
 
-        os.remove("./temp/temp_file"+extension)
+        os.remove("./static/temp_file"+extension)
         conn.close()
 
         # Add any other analytics you think would be relevant for your data.
