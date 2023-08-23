@@ -1,0 +1,52 @@
+
+.summary-container {
+    border-radius: 10px;
+    background: linear-gradient(#7e5fed, #607ef3);
+    max-height: 300px;  /* Or any other height you prefer */
+    overflow-y: auto;   /* Makes it scrollable if content exceeds max-height */
+   
+}
+
+.streamlit-expanderHeader[role="button"] {
+    background: linear-gradient(#7e5fed, #607ef3);
+    border: 1px solid #e1e8ed;
+    border-radius: 4px;
+}
+
+.streamlit-expanderContent {
+    background: linear-gradient(#7e5fed, #607ef3);
+}
+
+.css-hc3laj {
+    display: inline-flex;
+    -webkit-box-align: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    justify-content: center;
+    font-weight: 400;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.5rem;
+    min-height: 38.4px;
+    margin: 0px;
+    line-height: 1.6;
+    color: inherit;
+    width: 100% !important;
+    user-select: none;
+    background-color: rgb(43, 44, 54);
+    border: 1px solid
+}
+
+.css-c34i5s {
+    border-right: 0px;
+}
+
+
+.css-1ec096l {
+    font-size: 1rem;
+    font-family: "Source Sans Pro", sans-serif;
+    padding: 0.25rem 0.375rem;
+    line-height: 1.5;
+    overflow: overlay;
+    width: 850px;
+    max-height: 800px;
+}
