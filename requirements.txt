@@ -10,3 +10,6 @@ nltk
 assemblyai
 transformers
 spacy
+PyTorch
+TensorFlow
+Flax
