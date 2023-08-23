@@ -5,9 +5,7 @@ import streamlit as st
 import pandas as pd
 import os
 import voice_recognition_module as vr
-import whisper
 from tempfile import NamedTemporaryFile
-import json
 import seaborn as sns
 import matplotlib.pyplot as plt
 import plotly.express as px
