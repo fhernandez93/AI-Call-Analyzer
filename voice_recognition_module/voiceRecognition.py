@@ -1,6 +1,5 @@
 import assemblyai as aai
 import ssl
-from voice_recognition_module.tokens import *
 ssl._create_default_https_context = ssl._create_unverified_context
 import json
 import numpy as np
