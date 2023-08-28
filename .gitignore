@@ -4,3 +4,5 @@ sentiment.csv
 transcript.txt
 transcript_summary.txt
 /.streamlit/secrets.toml
+.env
+/static
