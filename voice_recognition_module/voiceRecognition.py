@@ -61,11 +61,15 @@ class voiceTranscription:
     #Returns a clean text for the call without additional detected speakers 
     def cleaned_string(self): 
         array = self.cleanSpeakers()
+        return '\n'.join([d["speaker"]+': '+d["text"] for d in array])
+    
+    def cleaned_string_for_summary(self): 
+        array = self.cleanSpeakers()
         return '\n'.join([d["text"] for d in array])
 
     #This is an intelligent solution, but it's limited by the length of the text 
     def bart_summarize(self) -> str:
-        text = self.cleaned_string()
+        text = self.cleaned_string_for_summary()
         # Load pre-trained BART model and tokenizer for summarization
         model_name = "facebook/bart-large-cnn"
         model = BartForConditionalGeneration.from_pretrained(model_name)

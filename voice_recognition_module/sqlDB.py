@@ -15,6 +15,16 @@ CREATE TABLE IF NOT EXISTS Customers (
 )
 ''')
                
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS Users (
+    Name TEXT,
+    User TEXT NOT NULL,
+    Password TEXT NOT NULL,
+    KeySecure TEXT,
+    PRIMARY KEY (User)
+)
+''')
+               
 
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS customersCalls (

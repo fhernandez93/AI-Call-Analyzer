@@ -13,3 +13,6 @@ spacy
 torch
 TensorFlow
 Flax
+pickle
+pathlib
+python-dotenv

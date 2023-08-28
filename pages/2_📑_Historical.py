@@ -4,9 +4,6 @@ import streamlit as st
 import pandas as pd
 import os
 import voice_recognition_module as vr
-from tempfile import NamedTemporaryFile
-import seaborn as sns
-import matplotlib.pyplot as plt
 import plotly.express as px
 import numpy as np 
 import plotly.graph_objects as go
@@ -16,8 +13,11 @@ from nltk.tokenize import word_tokenize
 from collections import Counter
 import sqlite3
 from datetime import datetime
-import time
 from functions import * 
+
+if not st.session_state["authentication_status"]:
+    st.warning("You must log-in to see the content of this sensitive page! Reload page to login.")
+    st.stop()  # App won't run anything after this line
 
 
 def plot_bubble_chart(transcription, speaker):
@@ -75,20 +75,22 @@ if st.session_state.viewPage == "first":
         c.execute("SELECT Date FROM customersCalls")
     else:
         c.execute(f"SELECT Date FROM customersCalls where name = '{selected_client}'")
-    dates = [item[0] for item in c.fetchall()]
-    selected_date = selectbox_with_default('Date', dates, col=col2)
 
+    dates = [(datetime.strptime(item[0], '%Y-%m-%d %H:%M:%S')).date() for item in c.fetchall()]
+    #selected_date = selectbox_with_default('Date', dates, col=col2)
+
+    selected_date_1 = col2.date_input("From:",(min(dates)))
+    selected_date_2 = col3.date_input("To:", max(dates))
+    
 
     ################
     ##table with all records 
-    if selected_client == DEFAULT and selected_date == DEFAULT:
-        customersCalls = f"SELECT name, recordingID, date from customersCalls"
-    elif selected_client!= DEFAULT and selected_date!= DEFAULT: 
-        customersCalls = f"SELECT name, recordingID, date from customersCalls where name = '{selected_client}' and date = '{selected_date}'"
-    elif selected_client!= DEFAULT:
-        customersCalls = f"SELECT name, recordingID, date from customersCalls where name = '{selected_client}'"
-    elif selected_date!= DEFAULT: 
-        customersCalls = f"SELECT name, recordingID, date from customersCalls where date = '{selected_date}'"
+    if selected_client == DEFAULT:
+        customersCalls = f"SELECT name, recordingID, date from customersCalls where date between '{selected_date_1}' and '{selected_date_2}'"
+    elif selected_client!= DEFAULT: 
+        customersCalls = f"SELECT name, recordingID, date from customersCalls where name = '{selected_client}' and date between '{selected_date_1}' and '{selected_date_2}'"
+   
+   
 
 
 
@@ -201,11 +203,11 @@ elif st.session_state.viewPage == "second":
                 st.plotly_chart(fig_neg)
 
             # Bubble plots of word frequency
-            speaker_counts = Counter(st.session_state.sentiment['speaker'])
-            speakerA_text = st.session_state.sentiment[st.session_state.sentiment['speaker'] == list(speaker_counts.keys())[0]]['text']
+            speaker_counts = Counter(sentiment['speaker'])
+            speakerA_text = sentiment[sentiment['speaker'] == list(speaker_counts.keys())[0]]['text']
             speakerA = ' '.join(speakerA_text)
 
-            speakerB_text = st.session_state.sentiment[st.session_state.sentiment['speaker'] == list(speaker_counts.keys())[1]]['text']
+            speakerB_text = sentiment[sentiment['speaker'] == list(speaker_counts.keys())[1]]['text']
             speakerB = ' '.join(speakerB_text)
 
 
