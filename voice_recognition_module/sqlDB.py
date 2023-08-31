@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS customersCalls (
     clientID TEXT,
     name TEXT NOT NULL,
     date DATE,
+    EmployeeName TEXT NOT NULL,
+    callType TEXT NOT NULL,
     recordingID TEXT,
     fileName,
     cleanTranscription,
@@ -50,7 +52,8 @@ CREATE TABLE IF NOT EXISTS callsRecords (
     text TEXT,
     sentiment_score_neg TEXT,
     sentiment_score_neu TEXT,
-    sentiment_score_pos TEXT
+    sentiment_score_pos TEXT,
+    sentiment_score_overall TEXT
 )
 ''')
                

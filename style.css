@@ -7,6 +7,15 @@
    
 }
 
+.warning-container {
+    border-radius: 10px;
+    background: linear-gradient(#7e5fed, #607ef3);
+    max-height: 300px;  /* Or any other height you prefer */
+    overflow-y: auto;   /* Makes it scrollable if content exceeds max-height */
+    font-weight: bold;
+   
+}
+
 .streamlit-expanderHeader[role="button"] {
     background: linear-gradient(#7e5fed, #607ef3);
     border: 1px solid #e1e8ed;

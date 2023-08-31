@@ -64,7 +64,6 @@ if st.session_state.viewPage == "first":
     # Fetch client names from the Customers table
     c.execute("SELECT name FROM Customers")
     client_names = [item[0] for item in c.fetchall()]
-    client_names = client_names
 
     # Dropdown to select a client
     selected_client = selectbox_with_default('Client', client_names, col=col1)

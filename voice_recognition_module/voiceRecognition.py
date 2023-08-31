@@ -20,6 +20,8 @@ from string import punctuation
 from heapq import nlargest
 import sqlite3
 import streamlit as st
+import re
+
 
 conn = sqlite3.connect('OPTcallsAnalytics.db')
 cursor = conn.cursor()
@@ -28,7 +30,7 @@ class voiceTranscription:
     """
         This package allows to retrieve relevant parameters from call recordings using AssemblyAI API 
     """
-    def __init__(self, file_name):
+    def __init__(self, file_name = ""):
         self.file_name = file_name
         self.api_key = st.secrets.KEY
        
@@ -49,7 +51,6 @@ class voiceTranscription:
 
         return speakers_array
     
-
     #This function returns sentences from speakers that appear the most. Hopefully this will get rid of und
     def cleanSpeakers(self):
         array = self.getSpeakersArray()
@@ -58,18 +59,99 @@ class voiceTranscription:
 
         return np.array(cleaned_speakers)
     
+    #Speaker identification (We should be able to implement a classification neural network once we have enough data to train a model)
+    def identify_speaker(self):
+        transcription = self.cleanSpeakers()
+        # Initialize scores for each speaker
+        speaker_A_score = 0
+        speaker_B_score = 0
+
+        # Regex patterns to identify agent-like or customer-like phrases
+        agent_patterns = [
+            r"how may i assist you",
+            r"my name is",
+            r"welcome to",
+            r"thank you for calling",
+            r"is there anything else",
+            r"how can i help you",
+            r"have an excellent day",
+            r"have a good day",
+            r"may i have your date of birth",
+            r"i'm still here with you",
+            r"your appointment",
+            r"the callback number i have",
+            r"how can i assist you",
+            r"first and last name",
+            r"reason for the call",
+            r"do you prefer morning or afternoon",
+            r"your email address",
+        ]
+
+        caller_patterns = [
+            r"i need help with",
+            r"i have a problem",
+            r"can you help me",
+            r"i'm calling about",
+            r"how do i"
+        ]
+
+        # Loop through each line in the transcription
+        for line in transcription:
+            speaker, text = line['speaker'], line['text'].lower()
+
+            # Score speaker A and speaker B based on phrases used
+            for pattern in agent_patterns:
+                if re.search(pattern, text):
+                    if speaker == "A":
+                        speaker_A_score += 1
+                    else:
+                        speaker_B_score += 1
+
+            for pattern in caller_patterns:
+                if re.search(pattern, text):
+                    if speaker == "A":
+                        speaker_B_score += 1
+                    else:
+                        speaker_A_score += 1
+
+        replacements = {"A": "", "B": ""}
+
+        # Determine who is the agent and who is the caller based on the scores
+        if speaker_A_score > speaker_B_score:
+            replacements =  {"A": "Agent", "B": "Caller"}
+        elif speaker_B_score > speaker_A_score:
+            replacements = {"A": "Caller", "B": "Agent"}
+        
+        if replacements["A"] != '': 
+            new_data = np.array([{k: replacements.get(v, v) if k == 'speaker' else v for k, v in item.items()} for item in transcription])
+            return new_data
+        else:
+            return transcription
+
+    
+    
     #Returns a clean text for the call without additional detected speakers 
-    def cleaned_string(self): 
-        array = self.cleanSpeakers()
+    def cleaned_string(self,rerun_array:list = []): 
+        if rerun_array:
+            array = rerun_array
+        else:
+            array = self.identify_speaker()
+        
         return '\n'.join([d["speaker"]+': '+d["text"] for d in array])
     
-    def cleaned_string_for_summary(self): 
-        array = self.cleanSpeakers()
+    def cleaned_string_for_summary(self,rerun_array:list = []): 
+        if rerun_array:
+            array = rerun_array
+        else:
+            array = self.identify_speaker()
         return '\n'.join([d["text"] for d in array])
 
     #This is an intelligent solution, but it's limited by the length of the text 
-    def bart_summarize(self) -> str:
-        text = self.cleaned_string_for_summary()
+    def bart_summarize(self,rerun_array:list = []) -> str:
+        if rerun_array:
+            text = self.cleaned_string_for_summary(rerun_array)
+        else:
+            text = self.cleaned_string_for_summary()
         # Load pre-trained BART model and tokenizer for summarization
         model_name = "facebook/bart-large-cnn"
         model = BartForConditionalGeneration.from_pretrained(model_name)
@@ -122,7 +204,7 @@ class voiceTranscription:
         MODEL = f"cardiffnlp/twitter-roberta-base-sentiment-latest"
         tokenizer = AutoTokenizer.from_pretrained(MODEL)
         model = AutoModelForSequenceClassification.from_pretrained(MODEL)
-        speakers_array = self.cleanSpeakers()
+        speakers_array = self.identify_speaker()
         for i, item in enumerate(speakers_array):
             encoded_text = tokenizer(item['text'],return_tensors='pt')
             output = model(**encoded_text)
@@ -131,7 +213,8 @@ class voiceTranscription:
             scores_dict = {
                 'neg':scores[0],
                 'neu':scores[1],
-                'pos':scores[2]
+                'pos':scores[2], 
+                'overall': float(scores[2]) - float(scores[0])
                 }
             speakers_array[i]['sentiment_score'] = scores_dict
 
