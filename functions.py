@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import re
 import pandas as pd
+import plotly.graph_objects as go
 
 DEFAULT = '< select an option >'
 
@@ -83,7 +84,13 @@ def identify_speaker(transcription):
             r"is there anything else",
             r"how can i help you",
             r"have an excellent day",
-            r"have a good day"
+            r"have a good day",
+            r"can i have the patient's date of birth",
+            r"would you be a new patient, or established",
+            r"who is your doctor",
+            r"what day works best for you",
+            r"can I have your phone number"
+
         ]
 
         caller_patterns = [
@@ -113,6 +120,7 @@ def identify_speaker(transcription):
                     else:
                         speaker_A_score += 1
 
+        print(speaker_A_score)
         # Determine who is the agent and who is the caller based on the scores
         if speaker_A_score > speaker_B_score:
             return {"A": "Agent", "B": "Caller"}
@@ -127,3 +135,24 @@ def replace_speakers(df=pd.DataFrame(), replacements = {}):
     old_data = df.to_dict('records')
     new_data = np.array([{k: replacements.get(v, v) if k == 'speaker' else v for k, v in item.items()} for item in old_data])
     return pd.json_normalize(new_data)
+
+
+def linear_gauge(title,val):
+    fig = go.Figure(go.Indicator(
+        mode = "gauge", value = val,
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        delta = {'reference': 10, 'position': "top"},
+        title = {'text':f"<b>{title}</b><br><span style='color: gray; font-size:0.8em'>"+f"{val:.2f}"+"<br></span>", 'font': {"size": 12, "color": "black"}},
+        gauge = {
+            'shape': "bullet",
+            'axis': {'range': [0, 100], 'tickcolor': "black", 'tickfont': {'color': "black", 'size': 10}},  # setting tickfont color here
+            'bgcolor': "white",
+            'steps': [
+                {'range': [0, 100], 'color': "#ec7f79"},
+                {'range': [0, 66], 'color': "#f1f192"},
+                {'range': [0, 33], 'color': "#81c051"}],
+            'bar': {'color': "#355586"}}))
+    fig.update_layout(height = 250, width=680, paper_bgcolor='white',  # this sets the entire figure background
+                    plot_bgcolor='white')
+    
+    return fig

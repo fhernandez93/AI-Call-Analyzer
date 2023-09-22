@@ -21,6 +21,7 @@ from heapq import nlargest
 import sqlite3
 import streamlit as st
 import re
+from detoxify import Detoxify
 
 
 conn = sqlite3.connect('OPTcallsAnalytics.db')
@@ -85,6 +86,12 @@ class voiceTranscription:
             r"reason for the call",
             r"do you prefer morning or afternoon",
             r"your email address",
+            r"can i have the patient's date of birth",
+            r"would you be a new patient, or established",
+            r"who is your doctor",
+            r"what day works best for you",
+            r"can i have your phone number",
+            r"is there anything else i could do for you"
         ]
 
         caller_patterns = [
@@ -129,7 +136,10 @@ class voiceTranscription:
             return transcription
 
     
+   
     
+
+
     #Returns a clean text for the call without additional detected speakers 
     def cleaned_string(self,rerun_array:list = []): 
         if rerun_array:
@@ -195,12 +205,19 @@ class voiceTranscription:
         final_summary=[word.text for word in summary]
         summary=''.join(final_summary)
         return summary
+    
+
+    #Detect toxicity 
+    @staticmethod
+    def toxicity_scores(conversation):
+        results = Detoxify('original').predict(conversation)
+        return pd.DataFrame(results, index=conversation).round(5)
 
     
     ##Sentiment analysis using Roberta pretained model 
     ##We need to pass the getSpeakersArray to calculate polarity scores on each sentence 
 
-    def getFullSentimentSpeakersArray(self):
+    def getSentimentSpeakersArray(self):
         MODEL = f"cardiffnlp/twitter-roberta-base-sentiment-latest"
         tokenizer = AutoTokenizer.from_pretrained(MODEL)
         model = AutoModelForSequenceClassification.from_pretrained(MODEL)
@@ -220,6 +237,20 @@ class voiceTranscription:
 
         
         return speakers_array
+    
+    def getFullSentimentSpeakersArray(self):
+        speakers_array = self.getSentimentSpeakersArray()
+        texts = [item['text'] for item in speakers_array]
+
+        toxicity = Detoxify('original').predict(texts)
+        for key, values in toxicity.items():
+            for idx, value in enumerate(values):
+                if idx < len(speakers_array):  # This check is to ensure there's no index out of range error
+                    speakers_array[idx][key] = value
+
+        return speakers_array
+  
+
     
  
 

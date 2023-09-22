@@ -53,7 +53,14 @@ CREATE TABLE IF NOT EXISTS callsRecords (
     sentiment_score_neg TEXT,
     sentiment_score_neu TEXT,
     sentiment_score_pos TEXT,
-    sentiment_score_overall TEXT
+    sentiment_score_overall TEXT,
+    toxicity TEXT,
+    severe_toxicity TEXT,
+    obscene TEXT,
+    threat TEXT,
+    insult TEXT,
+    identity_attack TEXT
+               
 )
 ''')
                

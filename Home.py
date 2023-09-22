@@ -19,9 +19,11 @@ import time
 from authetication.add_user import *
 from authetication.login import *
 from functions import *
+
 nltk.download('stopwords')
 nltk.download('punkt')
 extension = ''
+
 
 if 'tempKey' not in st.session_state:
         st.session_state.tempKey = ""
@@ -222,6 +224,7 @@ else:
 
                 # Dropdown to select a client
                 selected_client = st.sidebar.selectbox('Client', client_names)
+                employee_name = st.sidebar.text_input('Employee Name',placeholder='Name')
                 
                 if st.sidebar.button("Done"):
                     # Store selected client and current time in the customers_time table
@@ -239,14 +242,15 @@ else:
                     df['clientID'] = client_id
                     df['date'] = current_time
                     df.to_sql('callsRecords', conn, if_exists='append', index=False)
-                    c.execute("INSERT OR IGNORE INTO customersCalls (clientID,name,date,recordingID,fileName, cleanTranscription, Summary) VALUES (?, ?, ?, ?, ?, ?, ?)", 
-                            (client_id,selected_client,current_time,recordingID,st.session_state.uploaded_file.name, st.session_state.transcription, st.session_state.summary))
+                    c.execute("INSERT OR IGNORE INTO customersCalls (clientID,name,date,callType,EmployeeName,recordingID,fileName, cleanTranscription, Summary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+                            (client_id,selected_client,current_time,st.session_state.call_type,employee_name,recordingID,st.session_state.uploaded_file.name, st.session_state.transcription, st.session_state.summary))
                     conn.commit()
                     st.session_state.transcription = ""
                     st.session_state.summary = ""
                     st.session_state.uploaded_file = ""
                     st.session_state.call_type = ""
                     st.session_state.save_mode = False
+                    st.experimental_rerun()  
                         
 
 
@@ -353,6 +357,25 @@ else:
                 st.pyplot(fig_A)
                 st.pyplot(fig_B)
 
+
+            ##########Toxicity###########
+            toxic_scores = st.session_state.sentiment
+            st.dataframe(toxic_scores)
+            toxic_scores = toxic_scores[(toxic_scores['toxicity'] > 0.4) | ( toxic_scores['insult'] > 0.4) |  (toxic_scores['obscene'] > 0.4) |  (toxic_scores['threat'] > 0.4)]
+
+            if not toxic_scores.empty:
+                with st.expander("Toxicity Analysis", expanded=False):
+
+                    for index,row in toxic_scores.iterrows():
+                        st.write("Speaker "+ row['speaker'] +": "+ row['text'])
+                        fig1 = linear_gauge("Toxicity", row['toxicity']*100)
+                        st.plotly_chart(fig1,use_container_width=True, theme=None)
+                        fig2 = linear_gauge("Insult", row['insult']*100)
+                        st.plotly_chart(fig2,use_container_width=True, theme=None)
+                        fig3 = linear_gauge("Threat", row['threat']*100)
+                        st.plotly_chart(fig3,use_container_width=True, theme=None)
+
+                
 
             # Bubble plots of word frequency
             speaker_counts = Counter(st.session_state.sentiment['speaker'])

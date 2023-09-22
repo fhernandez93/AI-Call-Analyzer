@@ -60,34 +60,41 @@ if 'viewPage' not in st.session_state:
 ##Filters section 
 
 if st.session_state.viewPage == "first":
-    col1, col2,col3 = st.columns(3)
+    col1, col2,col3,col4 = st.columns(4)
     # Fetch client names from the Customers table
-    c.execute("SELECT name FROM Customers")
+    c.execute("SELECT DISTINCT name FROM customersCalls")
     client_names = [item[0] for item in c.fetchall()]
+    c.execute("SELECT DISTINCT EmployeeName FROM customersCalls")
+    employees = [item[0] for item in c.fetchall()]
 
     # Dropdown to select a client
     selected_client = selectbox_with_default('Client', client_names, col=col1)
+    selected_employee = selectbox_with_default('Employee', employees, col=col2)
 
     #
     ## Dropdown to select a date
-    if selected_client ==DEFAULT:
+    if selected_client ==DEFAULT and selected_employee ==DEFAULT:
         c.execute("SELECT Date FROM customersCalls")
     else:
-        c.execute(f"SELECT Date FROM customersCalls where name = '{selected_client}'")
+        client_query = 'name="' + selected_client+'"' if selected_client!=DEFAULT else ''
+        employee_query = 'EmployeeName="' + selected_employee+'"' if selected_employee!=DEFAULT else ''
+        c.execute(f"SELECT Date FROM customersCalls where {client_query} {'and' if client_query!='' and employee_query!='' else ''} {employee_query}")
 
     dates = [(datetime.strptime(item[0], '%Y-%m-%d %H:%M:%S')).date() for item in c.fetchall()]
     #selected_date = selectbox_with_default('Date', dates, col=col2)
 
-    selected_date_1 = col2.date_input("From:",(min(dates)))
-    selected_date_2 = col3.date_input("To:", max(dates))
+    selected_date_1 = col3.date_input("From:",(min(dates)))
+    selected_date_2 = col4.date_input("To:", max(dates))
     
 
     ################
     ##table with all records 
-    if selected_client == DEFAULT:
+    if selected_client ==DEFAULT and selected_employee ==DEFAULT:
         customersCalls = f"SELECT name, recordingID, date from customersCalls where date between '{selected_date_1}' and '{selected_date_2}'"
-    elif selected_client!= DEFAULT: 
-        customersCalls = f"SELECT name, recordingID, date from customersCalls where name = '{selected_client}' and date between '{selected_date_1}' and '{selected_date_2}'"
+    else: 
+        client_query = 'name="' + selected_client+'"' if selected_client!=DEFAULT else ''
+        employee_query = 'EmployeeName="' + selected_employee+'"' if selected_employee!=DEFAULT else ''
+        customersCalls = f"SELECT name, recordingID, date from customersCalls where name = '{selected_client}' and date between '{selected_date_1}' and '{selected_date_2}' {'and' if client_query!='' or employee_query!='' else ''} {client_query} {'and' if client_query!='' and employee_query!='' else ''} {employee_query}"
    
    
 
@@ -131,6 +138,20 @@ elif st.session_state.viewPage == "second":
         with tabs_list[i]:
             c.execute(f"SELECT cleanTranscription FROM customersCalls WHERE recordingID = '{str(item)}'")
             transcription = (c.fetchone()[0])
+            c.execute(f"SELECT callType FROM customersCalls WHERE recordingID = '{str(item)}'")
+            call_type = (c.fetchone()[0])
+            c.execute(f"SELECT EmployeeName FROM customersCalls WHERE recordingID = '{str(item)}'")
+            EmployeeName = (c.fetchone()[0])
+            c.execute(f"SELECT name FROM customersCalls WHERE recordingID = '{str(item)}'")
+            client = (c.fetchone()[0])
+            st.markdown(
+                    f"""
+                    <div>
+                        <b>Client: {client} - Call Type: {call_type} - Employee: {EmployeeName}<br></b>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
             with st.expander("Clear Transcription", expanded=False):
                 st.markdown(
                     f"""
@@ -153,53 +174,58 @@ elif st.session_state.viewPage == "second":
                     unsafe_allow_html=True
                 )
 
+            ##Sentiment Analysis Data
+            ################################
             
             sentiment = pd.read_sql_query(f"select * from callsRecords where recordingID = {str(item)}", conn)
             sentiment = sentiment.astype({'sentiment_score_pos':'float',
                                           'sentiment_score_neu':'float',
                                           'sentiment_score_neg':'float',
+                                          'sentiment_score_overall':'float',
+                                          'toxicity':'float',
+                                          'severe_toxicity':'float',
+                                          'obscene':'float',
+                                          'threat':'float',
+                                          'insult':'float',
+                                          'identity_attack':'float',
                                           
                                           })
 
             with st.expander("Sentiment Analysis", expanded=False):
                 st.write("""Using a model trained on Twitter data, we analyze each sentence in a conversation and assign a sentiment score ranging from 0 to 1. 
-                         For example, a highly negative sentence might receive scores like: neg:0.8, pos:0.2, and neu:0. 
-                         The bars in our visual representation indicate the average sentiment score for each speaker in the conversation. Meanwhile, the error bars show the range or variation in sentiment scores for those speakers. 
-                         """)
-#
-                    # Calculate the meansx
-                mean_pos = sentiment.groupby('speaker')['sentiment_score_pos'].mean()
-                mean_neu = sentiment.groupby('speaker')['sentiment_score_neu'].mean()
-                mean_neg = sentiment.groupby('speaker')['sentiment_score_neg'].mean()
+                        For example, a highly negative sentence might receive scores like: neg:0.8, pos:0.2, and neu:0. 
+                        The bars in our visual representation indicate the average sentiment score for each speaker in the conversation. Meanwhile, the error bars show the range or variation in sentiment scores for those speakers. 
+                        """)
+                
+                sentiment_scores = sentiment.groupby('speaker')['sentiment_score_overall']
+                sentiment_speakers = list(sentiment_scores.groups.keys())
 
-                # Calculate standard errors
-                std_error_pos = sentiment.groupby('speaker')['sentiment_score_pos'].std() / np.sqrt(sentiment.groupby('speaker').size())
-                std_error_neu = sentiment.groupby('speaker')['sentiment_score_neu'].std() / np.sqrt(sentiment.groupby('speaker').size())
-                std_error_neg = sentiment.groupby('speaker')['sentiment_score_neg'].std() / np.sqrt(sentiment.groupby('speaker').size())
+                #Standard error \sigma/\sqrt(n)
+                std_error_pos = sentiment.groupby('speaker')['sentiment_score_overall'].std() / np.sqrt(sentiment.groupby('speaker').size())
 
-                # Positive Sentiment Plot with Error Bars
-                fig_pos = go.Figure()
-                fig_pos.add_trace(go.Bar(x=mean_pos.index, y=mean_pos, 
-                                         error_y=dict(type='data', array=std_error_pos, visible=True),
-                                         marker_color=px.colors.qualitative.Vivid))
-                fig_pos.update_layout(title="Positive Sentiment", template="plotly_white")
-                st.plotly_chart(fig_pos)
 
-                # Neutral Sentiment Plot with Error Bars
-                fig_neu = go.Figure()
-                fig_neu.add_trace(go.Bar(x=mean_neu.index, y=mean_neu, 
-                                         error_y=dict(type='data', array=std_error_neu, visible=True),
-                                         marker_color=px.colors.qualitative.Vivid))
-                fig_neu.update_layout(title="Neutral Sentiment", template="plotly_white")
-                st.plotly_chart(fig_neu)
+                fig_A = gauge_sentiment_plot(sentiment_scores.mean()[sentiment_speakers[0]],speaker=sentiment_speakers[0], std =std_error_pos[0])
+                fig_B = gauge_sentiment_plot(sentiment_scores.mean()[sentiment_speakers[1]],speaker=sentiment_speakers[1], std = std_error_pos[1])
 
-                # Negative Sentiment Plot with Error Bars
-                fig_neg = go.Figure()
-                fig_neg.add_trace(go.Bar(x=mean_neg.index, y=mean_neg, 
-                                         error_y=dict(type='data', array=std_error_neg, visible=True),
-                                         marker_color=px.colors.qualitative.Vivid))
-                fig_neg.update_layout(title="Negative Sentiment", template="plotly_white")
-                st.plotly_chart(fig_neg)
+
+                st.pyplot(fig_A)
+                st.pyplot(fig_B)
+
+             ##########Toxicity###########
+            st.dataframe(sentiment)
+            toxic_scores = sentiment[(sentiment['toxicity'] > 0.4) | ( sentiment['insult'] > 0.4) |  (sentiment['obscene'] > 0.4) |  (sentiment['threat'] > 0.4)]
+
+            if not toxic_scores.empty:
+                with st.expander("Toxicity Analysis", expanded=False):
+
+                    for index,row in toxic_scores.iterrows():
+                        st.write("Speaker "+ row['speaker'] +": "+ row['text'])
+                        fig1 = linear_gauge("Toxicity", row['toxicity']*100)
+                        st.plotly_chart(fig1,use_container_width=True, theme=None)
+                        fig2 = linear_gauge("Insult", row['insult']*100)
+                        st.plotly_chart(fig2,use_container_width=True, theme=None)
+                        fig3 = linear_gauge("Threat", row['threat']*100)
+                        st.plotly_chart(fig3,use_container_width=True, theme=None)
 
             # Bubble plots of word frequency
             speaker_counts = Counter(sentiment['speaker'])
