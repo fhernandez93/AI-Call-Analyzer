@@ -358,9 +358,17 @@ else:
                 st.pyplot(fig_B)
 
 
+                negative_sentences = st.session_state.sentiment[st.session_state.sentiment['sentiment_score.overall']< -0.45]
+                if negative_sentences.empty== False:
+                    st.subheader("Highly negative sentences:")
+                for index,row in negative_sentences.iterrows():
+                        st.markdown(f"""<div><b>&#x2022;Speaker: {row['speaker']} - Sentiment Score: {row['sentiment_score.overall']:.2f}:</b><br>  {row['text']}</div>""",
+                        unsafe_allow_html=True)
+
+
             ##########Toxicity###########
             toxic_scores = st.session_state.sentiment
-            st.dataframe(toxic_scores)
+            #st.dataframe(toxic_scores)
             toxic_scores = toxic_scores[(toxic_scores['toxicity'] > 0.4) | ( toxic_scores['insult'] > 0.4) |  (toxic_scores['obscene'] > 0.4) |  (toxic_scores['threat'] > 0.4)]
 
             if not toxic_scores.empty:

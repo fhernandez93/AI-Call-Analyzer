@@ -12,7 +12,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from collections import Counter
 import sqlite3
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from functions import * 
 
 if not st.session_state["authentication_status"]:
@@ -60,68 +60,77 @@ if 'viewPage' not in st.session_state:
 ##Filters section 
 
 if st.session_state.viewPage == "first":
-    col1, col2,col3,col4 = st.columns(4)
+    col1, col2,col3,col4,col5 = st.columns(5)
     # Fetch client names from the Customers table
     c.execute("SELECT DISTINCT name FROM customersCalls")
     client_names = [item[0] for item in c.fetchall()]
     c.execute("SELECT DISTINCT EmployeeName FROM customersCalls")
     employees = [item[0] for item in c.fetchall()]
+    c.execute("SELECT DISTINCT callType FROM customersCalls")
+    callTypes = [item[0] for item in c.fetchall()]
 
     # Dropdown to select a client
     selected_client = selectbox_with_default('Client', client_names, col=col1)
     selected_employee = selectbox_with_default('Employee', employees, col=col2)
+    selected_call_type = selectbox_with_default('Type', callTypes, col=col3)
 
     #
     ## Dropdown to select a date
     if selected_client ==DEFAULT and selected_employee ==DEFAULT:
         c.execute("SELECT Date FROM customersCalls")
     else:
-        client_query = 'name="' + selected_client+'"' if selected_client!=DEFAULT else ''
-        employee_query = 'EmployeeName="' + selected_employee+'"' if selected_employee!=DEFAULT else ''
-        c.execute(f"SELECT Date FROM customersCalls where {client_query} {'and' if client_query!='' and employee_query!='' else ''} {employee_query}")
+        query_str = 'name="' + selected_client+'"' if selected_client!=DEFAULT else ''
+        query_str += (" and " if query_str and selected_employee!=DEFAULT else "") + 'EmployeeName="' + selected_employee+'"' if selected_employee!=DEFAULT else ''
+        query_str +=( " and " if query_str  and selected_call_type!=DEFAULT else "") + 'callType="' + selected_call_type+'"' if selected_call_type!=DEFAULT else ''
+        c.execute(f"SELECT Date FROM customersCalls where {query_str}")
 
     dates = [(datetime.strptime(item[0], '%Y-%m-%d %H:%M:%S')).date() for item in c.fetchall()]
     #selected_date = selectbox_with_default('Date', dates, col=col2)
 
-    selected_date_1 = col3.date_input("From:",(min(dates)))
-    selected_date_2 = col4.date_input("To:", max(dates))
-    
+    try:
 
-    ################
-    ##table with all records 
-    if selected_client ==DEFAULT and selected_employee ==DEFAULT:
-        customersCalls = f"SELECT name, recordingID, date from customersCalls where date between '{selected_date_1}' and '{selected_date_2}'"
-    else: 
-        client_query = 'name="' + selected_client+'"' if selected_client!=DEFAULT else ''
-        employee_query = 'EmployeeName="' + selected_employee+'"' if selected_employee!=DEFAULT else ''
-        customersCalls = f"SELECT name, recordingID, date from customersCalls where name = '{selected_client}' and date between '{selected_date_1}' and '{selected_date_2}' {'and' if client_query!='' or employee_query!='' else ''} {client_query} {'and' if client_query!='' and employee_query!='' else ''} {employee_query}"
+        selected_date_1 = col4.date_input("From:",(min(dates)))
+        selected_date_2 = col5.date_input("To:", max(dates)+timedelta(days=1))
+
+
+        ################
+        ##table with all records 
+        if selected_client ==DEFAULT and selected_employee ==DEFAULT:
+            customersCalls = f"SELECT name, recordingID, EmployeeName,callType, date from customersCalls where date between '{selected_date_1}' and '{selected_date_2}'"
+        else: 
+            query_str = 'name="' + selected_client+'"' if selected_client!=DEFAULT else ''
+            query_str += (" and " if query_str and selected_employee!=DEFAULT else "" )+ 'EmployeeName="' + selected_employee+'"' if selected_employee!=DEFAULT else ''
+            query_str += (" and " if query_str and selected_call_type!=DEFAULT else "" )+ 'callType="' + selected_call_type+'"' if selected_call_type!=DEFAULT else ''
+            customersCalls = f"SELECT name, EmployeeName,callType, recordingID, date from customersCalls where date between '{selected_date_1}' and '{selected_date_2}'{' and ' if query_str else ''} {query_str}"
+        df = pd.read_sql_query(customersCalls, conn)
+
+        df = df.rename(columns={"name":"Client", "date":"Date"})
+
+        st.text("Records on file")
+
+        #st.table(df.assign(hack='').set_index('hack'))
+        selection = dataframe_with_selections(df)
+        if 'historical_selections' not in st.session_state:
+            st.session_state.historical_selections = {}
+
+
+
+
+        if st.button("View Analytics"):
+            if len(selection['selected_rows_indices']) == 0:
+                st.warning("🔥 No selected items")
+            else:
+                st.session_state.historical_selections = selection
+                st.session_state.viewPage = "second"
+                st.experimental_rerun()
    
+    except:
+        st.error("No results have been found using this combination")
+
+
    
 
-
-
-    df = pd.read_sql_query(customersCalls, conn)
-
-    df = df.rename(columns={"name":"Client", "date":"Date"})
-
-    st.text("Records on file")
-
-    #st.table(df.assign(hack='').set_index('hack'))
-    selection = dataframe_with_selections(df)
-
-    if 'historical_selections' not in st.session_state:
-        st.session_state.historical_selections = {}
-
-
-
-
-    if st.button("View Analytics"):
-        if len(selection['selected_rows_indices']) == 0:
-            st.warning("🔥 No selected items")
-        else:
-            st.session_state.historical_selections = selection
-            st.session_state.viewPage = "second"
-            st.experimental_rerun()
+   
 
 
 
@@ -192,10 +201,6 @@ elif st.session_state.viewPage == "second":
                                           })
 
             with st.expander("Sentiment Analysis", expanded=False):
-                st.write("""Using a model trained on Twitter data, we analyze each sentence in a conversation and assign a sentiment score ranging from 0 to 1. 
-                        For example, a highly negative sentence might receive scores like: neg:0.8, pos:0.2, and neu:0. 
-                        The bars in our visual representation indicate the average sentiment score for each speaker in the conversation. Meanwhile, the error bars show the range or variation in sentiment scores for those speakers. 
-                        """)
                 
                 sentiment_scores = sentiment.groupby('speaker')['sentiment_score_overall']
                 sentiment_speakers = list(sentiment_scores.groups.keys())
@@ -211,8 +216,17 @@ elif st.session_state.viewPage == "second":
                 st.pyplot(fig_A)
                 st.pyplot(fig_B)
 
+                negative_sentences = sentiment[sentiment['sentiment_score_overall']< -0.45]
+                if negative_sentences.empty== False:
+                    st.subheader("Highly negative sentences:")
+                for index,row in negative_sentences.iterrows():
+                        st.markdown(f"""<div><b>&#x2022;Speaker: {row['speaker']} - Sentiment Score: {row['sentiment_score_overall']:.2f}:</b><br>  {row['text']}</div>""",
+                        unsafe_allow_html=True)
+
+
+
              ##########Toxicity###########
-            st.dataframe(sentiment)
+            #st.dataframe(sentiment)
             toxic_scores = sentiment[(sentiment['toxicity'] > 0.4) | ( sentiment['insult'] > 0.4) |  (sentiment['obscene'] > 0.4) |  (sentiment['threat'] > 0.4)]
 
             if not toxic_scores.empty:
