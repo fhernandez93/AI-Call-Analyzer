@@ -60,7 +60,7 @@ if 'viewPage' not in st.session_state:
 ##Filters section 
 
 if st.session_state.viewPage == "first":
-    col1, col2,col3,col4,col5 = st.columns(5)
+    col1, col2,col3,col4,col5 = st.columns([5,5,5,5,5])
     # Fetch client names from the Customers table
     c.execute("SELECT DISTINCT name FROM customersCalls")
     client_names = [item[0] for item in c.fetchall()]
@@ -87,46 +87,43 @@ if st.session_state.viewPage == "first":
     dates = [(datetime.strptime(item[0], '%Y-%m-%d %H:%M:%S')).date() for item in c.fetchall()]
     #selected_date = selectbox_with_default('Date', dates, col=col2)
 
-    try:
 
-        selected_date_1 = col4.date_input("From:",(min(dates)))
-        selected_date_2 = col5.date_input("To:", max(dates)+timedelta(days=1))
+    selected_date_1 = col4.date_input("From:",(min(dates)))
+    selected_date_2 = col5.date_input("To:", max(dates)+timedelta(days=1))
 
 
-        ################
-        ##table with all records 
-        if selected_client ==DEFAULT and selected_employee ==DEFAULT:
-            customersCalls = f"SELECT name, recordingID, EmployeeName,callType, date from customersCalls where date between '{selected_date_1}' and '{selected_date_2}'"
-        else: 
-            query_str = 'name="' + selected_client+'"' if selected_client!=DEFAULT else ''
-            query_str += (" and " if query_str and selected_employee!=DEFAULT else "" )+ 'EmployeeName="' + selected_employee+'"' if selected_employee!=DEFAULT else ''
-            query_str += (" and " if query_str and selected_call_type!=DEFAULT else "" )+ 'callType="' + selected_call_type+'"' if selected_call_type!=DEFAULT else ''
-            customersCalls = f"SELECT name, EmployeeName,callType, recordingID, date from customersCalls where date between '{selected_date_1}' and '{selected_date_2}'{' and ' if query_str else ''} {query_str}"
-        df = pd.read_sql_query(customersCalls, conn)
+    ################
+    ##table with all records 
+    if selected_client ==DEFAULT and selected_employee ==DEFAULT:
+        customersCalls = f"SELECT name, recordingID, EmployeeName,callType, date from customersCalls where date between '{selected_date_1}' and '{selected_date_2}'"
+    else: 
+        query_str = 'name="' + selected_client+'"' if selected_client!=DEFAULT else ''
+        query_str += (" and " if query_str and selected_employee!=DEFAULT else "" )+ 'EmployeeName="' + selected_employee+'"' if selected_employee!=DEFAULT else ''
+        query_str += (" and " if query_str and selected_call_type!=DEFAULT else "" )+ 'callType="' + selected_call_type+'"' if selected_call_type!=DEFAULT else ''
+        customersCalls = f"SELECT name, EmployeeName,callType, recordingID, date from customersCalls where date between '{selected_date_1}' and '{selected_date_2}'{' and ' if query_str else ''} {query_str}"
+    df = pd.read_sql_query(customersCalls, conn)
 
-        df = df.rename(columns={"name":"Client", "date":"Date"})
+    df = df.rename(columns={"name":"Client", "date":"Date"})
 
-        st.text("Records on file")
+    st.text("Records on file")
 
-        #st.table(df.assign(hack='').set_index('hack'))
-        selection = dataframe_with_selections(df)
-        if 'historical_selections' not in st.session_state:
-            st.session_state.historical_selections = {}
-
+    #st.table(df.assign(hack='').set_index('hack'))
+    selection = dataframe_with_selections(df)
+    if 'historical_selections' not in st.session_state:
+        st.session_state.historical_selections = {}
 
 
 
-        if st.button("View Analytics"):
-            if len(selection['selected_rows_indices']) == 0:
-                st.warning("🔥 No selected items")
-            else:
-                st.session_state.historical_selections = selection
-                st.session_state.viewPage = "second"
-                st.experimental_rerun()
+
+    if st.button("View Analytics"):
+        if len(selection['selected_rows_indices']) == 0:
+            st.warning("🔥 No selected items")
+        else:
+            st.session_state.historical_selections = selection
+            st.session_state.viewPage = "second"
+            st.experimental_rerun()
    
-    except:
-        st.error("No results have been found using this combination")
-
+   
 
    
 

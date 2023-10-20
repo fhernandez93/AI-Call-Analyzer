@@ -16,3 +16,6 @@ Flax
 pickle
 pathlib
 python-dotenv
+pypyodbc
+credential
+pyodbc

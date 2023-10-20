@@ -8,10 +8,15 @@ cursor = conn.cursor()
 
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS Customers (
-    clientID TEXT,
-    name TEXT NOT NULL,
-               
-    PRIMARY KEY (clientID)
+    clientID INT IDENTITY(1,1) PRIMARY KEY,
+    name TEXT NOT NULL
+)
+''')
+
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS Employees (
+    EmployeeId INT IDENTITY(1,1) PRIMARY KEY,
+    name TEXT NOT NULL
 )
 ''')
                

@@ -7,8 +7,6 @@ import matplotlib.pyplot as plt
 import nltk
 import pandas as pd
 import seaborn as sns
-nltk.download('punkt')
-nltk.download('vader_lexicon')
 from nltk.sentiment import SentimentIntensityAnalyzer
 from tqdm.notebook import tqdm
 from collections import Counter
@@ -23,6 +21,11 @@ import streamlit as st
 import re
 from detoxify import Detoxify
 
+#try:
+#    nltk.data.find('tokenizers/vader_lexicon')
+#except:
+#    nltk.download('vader_lexicon')
+#
 
 conn = sqlite3.connect('OPTcallsAnalytics.db')
 cursor = conn.cursor()

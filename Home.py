@@ -19,9 +19,16 @@ import time
 from authetication.add_user import *
 from authetication.login import *
 from functions import *
+#try:
+#    nltk.data.find('tokenizers/punkt')
+#except:
+#    nltk.download('punkt')
+#
+#try:
+#    nltk.data.find('tokenizers/stopwords')
+#except:
+#    nltk.download('stopwords')
 
-nltk.download('stopwords')
-nltk.download('punkt')
 extension = ''
 
 
