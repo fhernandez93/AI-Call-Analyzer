@@ -13,12 +13,16 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from collections import Counter
-import sqlite3
+import pyodbc
 from datetime import datetime
 import time
 from authetication.add_user import *
 from authetication.login import *
 from functions import *
+from sqlalchemy import create_engine
+
+nltk.download('punkt')
+nltk.download('stopwords')
 #try:
 #    nltk.data.find('tokenizers/punkt')
 #except:
@@ -81,7 +85,9 @@ else:
 
     
     #Database connection 
-    conn = sqlite3.connect('OPTcallsAnalytics.db')
+    #conn = sqlite3.connect('OPTcallsAnalytics.db')
+    Driver="DRIVER={ODBC Driver 18 for SQL Server};Server=tcp:opt-calls-analytics.database.windows.net,1433;Database=OPTCallsAnalytics;Uid="+str(SQLUSER)+";Pwd={"+str(SQLPASS)+"};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=100";
+    conn = pyodbc.connect(Driver)
     c = conn.cursor()
 
 
@@ -92,7 +98,7 @@ else:
 
     def check_file_exists(name):
         """Function to check if a file exists in the database by name."""
-        c.execute("SELECT COUNT(*) FROM customersCalls WHERE fileName=?", (name,))
+        c.execute("SELECT COUNT(*) FROM customersCalls WHERE cast(fileName as nvarchar(max))=?", (name,))
         count = c.fetchone()[0]
         return count > 0
 
@@ -229,9 +235,15 @@ else:
                 c.execute("SELECT name FROM Customers")
                 client_names = [item[0] for item in c.fetchall()]
 
+                c.execute("SELECT name FROM Employees")
+                employees = [item[0] for item in c.fetchall()]
+
                 # Dropdown to select a client
                 selected_client = st.sidebar.selectbox('Client', client_names)
-                employee_name = st.sidebar.text_input('Employee Name',placeholder='Name')
+                employee_name = st.sidebar.selectbox('Employee Name', employees)
+                call_type = selectbox_with_default(f'Select call type', ["Appointment Scheduling","Billing Question","Prescription Call", "Message for Provider"],sidebar=True)
+                if call_type!=DEFAULT:
+                    st.session_state.call_type = call_type
                 
                 if st.sidebar.button("Done"):
                     # Store selected client and current time in the customers_time table
@@ -242,14 +254,21 @@ else:
                                             ,'sentiment_score.pos':'sentiment_score_pos'
                                             ,'sentiment_score.overall':'sentiment_score_overall'
                                             })
-                    c.execute("SELECT clientID FROM Customers WHERE name=?", (selected_client,))
-                    client_id = int(c.fetchone()[0])
-                    recordingID = int(generateID())
-                    df['recordingID'] = recordingID
-                    df['clientID'] = client_id
+                    c.execute("SELECT clientID FROM Customers WHERE cast(name as nvarchar(max))=?", (selected_client,))
+                    client_id = str(int(c.fetchone()[0]))
+                    recordingID = str(int(generateID()))
+                    df['recordingID'] = (recordingID)
+                    df['clientID'] = (client_id)
                     df['date'] = current_time
-                    df.to_sql('callsRecords', conn, if_exists='append', index=False)
-                    c.execute("INSERT OR IGNORE INTO customersCalls (clientID,name,date,callType,EmployeeName,recordingID,fileName, cleanTranscription, Summary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+                    df[df.columns] = df[df.columns].astype(str)
+                    #st.dataframe(df)
+                    connection_str= (
+    "mssql+pyodbc://francisco:C13nc14s!@opt-calls-analytics.database.windows.net:1433/OPTCallsAnalytics?"
+    "driver=ODBC+Driver+18+for+SQL+Server")
+
+                    engine = create_engine(connection_str)
+                    df.to_sql('callsRecords', engine, if_exists='append', index=False)
+                    c.execute("INSERT INTO customersCalls (clientID,name,date,callType,EmployeeName,recordingID,fileName, cleanTranscription, Summary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", 
                             (client_id,selected_client,current_time,st.session_state.call_type,employee_name,recordingID,st.session_state.uploaded_file.name, st.session_state.transcription, st.session_state.summary))
                     conn.commit()
                     st.session_state.transcription = ""
@@ -284,11 +303,6 @@ else:
                     if st.button("Fix labels"):
                          st.session_state.fixLabels = True
                          st.experimental_rerun()  
-                    
-                    
-                    call_type = selectbox_with_default(f'Select call type', ["Appointment Scheduling","Billing Question","Prescription Call", "Message for Provider"])
-                    if call_type!=DEFAULT:
-                         st.session_state.call_type = call_type
                      
 
                     st.markdown(
@@ -345,20 +359,12 @@ else:
             ################################
 
             with st.expander("Sentiment Analysis", expanded=False):
-                st.write("""Using a model trained on Twitter data, we analyze each sentence in a conversation and assign a sentiment score ranging from 0 to 1. 
-                        For example, a highly negative sentence might receive scores like: neg:0.8, pos:0.2, and neu:0. 
-                        The bars in our visual representation indicate the average sentiment score for each speaker in the conversation. Meanwhile, the error bars show the range or variation in sentiment scores for those speakers. 
-                        """)
                 
                 sentiment_scores = st.session_state.sentiment.groupby('speaker')['sentiment_score.overall']
                 sentiment_speakers = list(sentiment_scores.groups.keys())
 
-                #Standard error \sigma/\sqrt(n)
-                std_error_pos = st.session_state.sentiment.groupby('speaker')['sentiment_score.overall'].std() / np.sqrt(st.session_state.sentiment.groupby('speaker').size())
-
-
-                fig_A = gauge_sentiment_plot(sentiment_scores.mean()[sentiment_speakers[0]],speaker=sentiment_speakers[0], std =std_error_pos[0])
-                fig_B = gauge_sentiment_plot(sentiment_scores.mean()[sentiment_speakers[1]],speaker=sentiment_speakers[1], std = std_error_pos[1])
+                fig_A = gauge_sentiment_plot(sentiment_scores.mean()[sentiment_speakers[0]],speaker=sentiment_speakers[0])
+                fig_B = gauge_sentiment_plot(sentiment_scores.mean()[sentiment_speakers[1]],speaker=sentiment_speakers[1])
 
 
                 st.pyplot(fig_A)
@@ -376,7 +382,7 @@ else:
             ##########Toxicity###########
             toxic_scores = st.session_state.sentiment
             #st.dataframe(toxic_scores)
-            toxic_scores = toxic_scores[(toxic_scores['toxicity'] > 0.4) | ( toxic_scores['insult'] > 0.4) |  (toxic_scores['obscene'] > 0.4) |  (toxic_scores['threat'] > 0.4)]
+            toxic_scores = toxic_scores[(toxic_scores['toxicity'] > 0.3) | ( toxic_scores['insult'] > 0.3) |  (toxic_scores['obscene'] > 0.3) |  (toxic_scores['threat'] > 0.3)]
 
             if not toxic_scores.empty:
                 with st.expander("Toxicity Analysis", expanded=False):

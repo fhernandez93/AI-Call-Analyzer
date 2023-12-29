@@ -6,3 +6,6 @@ transcript_summary.txt
 /.streamlit/secrets.toml
 .env
 /static
+*.ipynb
+*.sh
+*.yml

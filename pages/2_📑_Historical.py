@@ -12,8 +12,10 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from collections import Counter
 import sqlite3
+import pyodbc
 from datetime import datetime, date, timedelta
 from functions import * 
+from variables import *
 
 if not st.session_state["authentication_status"]:
     st.warning("You must log-in to see the content of this sensitive page! Reload page to login.")
@@ -53,7 +55,10 @@ local_css("style.css")
 
 #Database connection 
 
-conn = sqlite3.connect('OPTcallsAnalytics.db')
+#conn = sqlite3.connect('OPTcallsAnalytics.db')
+Driver="DRIVER={ODBC Driver 18 for SQL Server};Server=tcp:opt-calls-analytics.database.windows.net,1433;Database=OPTCallsAnalytics;Uid="+str(SQLUSER)+";Pwd={"+str(SQLPASS)+"};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=100";
+
+conn = pyodbc.connect(Driver)
 c = conn.cursor()
 if 'viewPage' not in st.session_state:
     st.session_state.viewPage = "first"
@@ -84,7 +89,7 @@ if st.session_state.viewPage == "first":
         query_str +=( " and " if query_str  and selected_call_type!=DEFAULT else "") + 'callType="' + selected_call_type+'"' if selected_call_type!=DEFAULT else ''
         c.execute(f"SELECT Date FROM customersCalls where {query_str}")
 
-    dates = [(datetime.strptime(item[0], '%Y-%m-%d %H:%M:%S')).date() for item in c.fetchall()]
+    dates = [item[0] for item in c.fetchall()]
     #selected_date = selectbox_with_default('Date', dates, col=col2)
 
 
@@ -107,7 +112,6 @@ if st.session_state.viewPage == "first":
 
     st.text("Records on file")
 
-    #st.table(df.assign(hack='').set_index('hack'))
     selection = dataframe_with_selections(df)
     if 'historical_selections' not in st.session_state:
         st.session_state.historical_selections = {}
@@ -123,13 +127,6 @@ if st.session_state.viewPage == "first":
             st.session_state.viewPage = "second"
             st.experimental_rerun()
    
-   
-
-   
-
-   
-
-
 
 #Tabs section
 elif st.session_state.viewPage == "second":

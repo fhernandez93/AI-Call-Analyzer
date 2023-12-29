@@ -17,9 +17,12 @@ from spacy.lang.en.stop_words import STOP_WORDS
 from string import punctuation
 from heapq import nlargest
 import sqlite3
+import pyodbc
 import streamlit as st
 import re
 from detoxify import Detoxify
+from variables import *
+nltk.download('vader_lexicon')
 
 #try:
 #    nltk.data.find('tokenizers/vader_lexicon')
@@ -27,7 +30,10 @@ from detoxify import Detoxify
 #    nltk.download('vader_lexicon')
 #
 
-conn = sqlite3.connect('OPTcallsAnalytics.db')
+#conn = sqlite3.connect('OPTcallsAnalytics.db')
+Driver="DRIVER={ODBC Driver 18 for SQL Server};Server=tcp:opt-calls-analytics.database.windows.net,1433;Database=OPTCallsAnalytics;Uid="+str(SQLUSER)+";Pwd={"+str(SQLPASS)+"};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=100";
+
+conn = pyodbc.connect(Driver)
 cursor = conn.cursor()
 
 class voiceTranscription:
@@ -36,7 +42,7 @@ class voiceTranscription:
     """
     def __init__(self, file_name = ""):
         self.file_name = file_name
-        self.api_key = st.secrets.KEY
+        self.api_key = KEY_ASSEMBLYAI
        
 
     def getTranscriptionObject(self): 

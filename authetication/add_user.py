@@ -1,15 +1,17 @@
 import streamlit as st
 import streamlit_authenticator as stauth
 import sqlite3
+import pyodbc
 import re
 import pyotp
 import qrcode
 import os
-from PIL import Image
 import numpy as np
 import base64
 from dotenv import load_dotenv
 from cryptography.fernet import Fernet
+from variables import *
+
 load_dotenv()
 
 
@@ -67,7 +69,10 @@ def check_mail(email):
 def runAddUser():
     
     # Connect to the database. This will create a new file named 'mydatabase.db' if it doesn't exist.
-    conn = sqlite3.connect('OPTcallsAnalytics.db')
+    #conn = sqlite3.connect('OPTcallsAnalytics.db')
+    # Driver="DRIVER={ODBC Driver 18 for SQL Server};Server=tcp:opt-calls-analytics.database.windows.net,1433;Database=OPTCallsAnalytics;Uid="+str(SQLUSER)+";Pwd={"+str(SQLPASS)+"};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=100";
+    Driver="DRIVER={ODBC Driver 18 for SQL Server};Server=tcp:opt-calls-analytics.database.windows.net,1433;Database=OPTCallsAnalytics;Uid="+str(SQLUSER)+";Pwd={"+str(SQLPASS)+"};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=100";
+    conn = pyodbc.connect(Driver)
     c = conn.cursor()
     st.title("Sign Up")
     #with st.form(key='signup',clear_on_submit=True):
@@ -116,7 +121,9 @@ def runAddUser():
 
 def addQR():
    
-    conn = sqlite3.connect('OPTcallsAnalytics.db')
+    #conn = sqlite3.connect('OPTcallsAnalytics.db')
+    Driver="DRIVER={ODBC Driver 18 for SQL Server};Server=tcp:opt-calls-analytics.database.windows.net,1433;Database=OPTCallsAnalytics;Uid="+str(SQLUSER)+";Pwd={"+str(SQLPASS)+"};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=100";
+    conn = pyodbc.connect(Driver)
     c = conn.cursor()
     userInfo = st.session_state.userInfo
 
@@ -146,8 +153,8 @@ def addQR():
     if st.button("Submmit"):
         totp = pyotp.TOTP(st.session_state.tempKey)
         if(totp.verify(code)):
-            encrypted_key = encrypt_key(os.getenv('2fa_KEY'), st.session_state.tempKey)
-            c.execute(f"""INSERT OR IGNORE INTO Users (Name, User, Password, KeySecure) VALUES ('{st.session_state.userInfo['name']}',
+            encrypted_key = encrypt_key(TWOFA_KEY, st.session_state.tempKey)
+            c.execute(f"""INSERT INTO Users (Name, UserName, Password, KeySecure) VALUES ('{st.session_state.userInfo['name']}',
                        '{st.session_state.userInfo['user']}','{st.session_state.userInfo['password']}',
                        '{encrypted_key}')""") 
             conn.commit()

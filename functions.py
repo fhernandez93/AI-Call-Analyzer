@@ -55,7 +55,7 @@ def gauge_sentiment_plot(mean_score,std = 0, speaker = 'Not Identified'):
     for loc, val in zip([0, 0.44, 0.88,1.32,1.76,2.2,2.64, 3.14], values):
         plt.annotate(val, xy=(loc, 2.5), ha="right" if val<=20 else "left")
 
-    plt.annotate(str(np.around(mean_score,2)) + '$\pm$' + str(np.around(std,2)), xytext=(0,0), xy=((-0.5*mean_score+0.5)*np.pi, 2.5),
+    plt.annotate(str(np.around(mean_score,2)), xytext=(0,0), xy=((-0.5*mean_score+0.5)*np.pi, 2.5),
                  arrowprops=dict(arrowstyle="wedge, tail_width=0.5", color="black", shrinkA=0),
                  bbox=dict(boxstyle="circle", facecolor="black", linewidth=2.0, ),
                  fontsize=45, color="white", ha="center"
