@@ -8,6 +8,7 @@ from authetication.add_user import *
 from streamlit_extras.switch_page_button import switch_page
 
 
+st.set_page_config(page_icon=':bar_chart:')
 if not st.session_state["authentication_status"]:
     st.warning("You must log-in to see the content of this sensitive page! Reload page to login.")
     st.stop()  # App won't run anything after this line
@@ -26,7 +27,7 @@ def local_css(file_name):
 
 #Database connection 
 #conn = sqlite3.connect('OPTcallsAnalytics.db')
-Driver="DRIVER={ODBC Driver 18 for SQL Server};Server=tcp:opt-calls-analytics.database.windows.net,1433;Database=OPTCallsAnalytics;Uid="+str(SQLUSER)+";Pwd={"+str(SQLPASS)+"};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=100";
+Driver="Driver={ODBC Driver 18 for SQL Server};Server=tcp:opt-call-analyzer-server.database.windows.net,1433;Database=OPTCallsAnalytics;Uid="+str(SQLUSER)+";Pwd={"+str(SQLPASS)+"};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=250;";
 conn = pyodbc.connect(Driver)
 c = conn.cursor()
 # Using the container's class for styling

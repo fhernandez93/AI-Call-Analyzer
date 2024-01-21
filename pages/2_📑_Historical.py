@@ -17,6 +17,8 @@ from datetime import datetime, date, timedelta
 from functions import * 
 from variables import *
 
+
+st.set_page_config(page_icon=':bar_chart:' )
 if not st.session_state["authentication_status"]:
     st.warning("You must log-in to see the content of this sensitive page! Reload page to login.")
     st.stop()  # App won't run anything after this line
@@ -56,7 +58,7 @@ local_css("style.css")
 #Database connection 
 
 #conn = sqlite3.connect('OPTcallsAnalytics.db')
-Driver="DRIVER={ODBC Driver 18 for SQL Server};Server=tcp:opt-calls-analytics.database.windows.net,1433;Database=OPTCallsAnalytics;Uid="+str(SQLUSER)+";Pwd={"+str(SQLPASS)+"};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=100";
+Driver="Driver={ODBC Driver 18 for SQL Server};Server=tcp:opt-call-analyzer-server.database.windows.net,1433;Database=OPTCallsAnalytics;Uid="+str(SQLUSER)+";Pwd={"+str(SQLPASS)+"};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=250;"
 
 conn = pyodbc.connect(Driver)
 c = conn.cursor()
@@ -193,19 +195,14 @@ elif st.session_state.viewPage == "second":
                                           'identity_attack':'float',
                                           
                                           })
-
             with st.expander("Sentiment Analysis", expanded=False):
                 
                 sentiment_scores = sentiment.groupby('speaker')['sentiment_score_overall']
                 sentiment_speakers = list(sentiment_scores.groups.keys())
 
-                #Standard error \sigma/\sqrt(n)
-                std_error_pos = sentiment.groupby('speaker')['sentiment_score_overall'].std() / np.sqrt(sentiment.groupby('speaker').size())
-
-
-                fig_A = gauge_sentiment_plot(sentiment_scores.mean()[sentiment_speakers[0]],speaker=sentiment_speakers[0], std =std_error_pos[0])
-                fig_B = gauge_sentiment_plot(sentiment_scores.mean()[sentiment_speakers[1]],speaker=sentiment_speakers[1], std = std_error_pos[1])
-
+                fig_A = gauge_sentiment_plot(sentiment_scores.mean()[sentiment_speakers[0]],speaker=sentiment_speakers[0])
+                fig_B = gauge_sentiment_plot(sentiment_scores.mean()[sentiment_speakers[1]],speaker=sentiment_speakers[1])
+                
 
                 st.pyplot(fig_A)
                 st.pyplot(fig_B)
