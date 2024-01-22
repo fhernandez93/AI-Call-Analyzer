@@ -17,7 +17,8 @@ from datetime import datetime, date, timedelta
 from functions import * 
 from variables import *
 
-
+if "authentication_status" not  in  st.session_state:
+    st.session_state["authentication_status"] = ""
 st.set_page_config(page_icon=':bar_chart:' )
 if not st.session_state["authentication_status"]:
     st.warning("You must log-in to see the content of this sensitive page! Reload page to login.")

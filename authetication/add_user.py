@@ -150,7 +150,7 @@ def addQR():
 
     code = st.text_input("Generated Code:")
 
-    if st.button("Submmit"):
+    if st.button("Submit"):
         totp = pyotp.TOTP(st.session_state.tempKey)
         if(totp.verify(code)):
             encrypted_key = encrypt_key(TWOFA_KEY, st.session_state.tempKey)

@@ -167,13 +167,13 @@ else:
     
 
     if 'sentiment' not in st.session_state:
-        st.session_state.sentiment = pd.DataFrame()
+        st.session_state.sentiment = []
     if 'transcription' not in st.session_state:
-        st.session_state.transcription = ""
+        st.session_state.transcription = []
     if 'summary' not in st.session_state:
-        st.session_state.summary = ""
+        st.session_state.summary = []
     if 'uploaded_file' not in st.session_state:
-        st.session_state.uploaded_file = ""
+        st.session_state.uploaded_file = []
     if 'call_type' not in st.session_state:
         st.session_state.call_type = ""
     if 'file_uploader_key' not in st.session_state:
@@ -181,35 +181,42 @@ else:
     if 'save_call' not in st.session_state:
         st.session_state.save_call = ""
     if 'fixLabel_form' not in st.session_state:
-        st.session_state.fixLabel_form = False
+        st.session_state.fixLabel_form = []
 
     val_key="test"
+    if st.button("Clear uploaded files"):
+            st.session_state["file_uploader_key"] += 1
+            st.session_state.uploaded_file = ""
+            st.experimental_rerun()
 
-    def process_data(uploaded_file):
-        if not st.session_state.uploaded_file:
-            st.session_state.uploaded_file = uploaded_file
+    def process_data(file_item,index):
+       
+        
+        st.header(file_item.name)
         # If a file is uploaded, process it
-        if st.session_state.uploaded_file:
+        if file_item:
             #check if file has not been already processed
-            if check_file_exists(st.session_state.uploaded_file.name):
+            if check_file_exists(file_item.name):
                 st.success('This file is on database, check historical section', icon="✅")
-                if st.button("Clear uploaded files"):
-                    st.session_state["file_uploader_key"] += 1
-                    st.session_state.uploaded_file = ""
-                    st.experimental_rerun()
+                #if st.button("Clear uploaded files"):
+                #    st.session_state["file_uploader_key"] += 1
+                #    st.session_state.uploaded_file = ""
+                #    st.experimental_rerun()
+                return ""
             else:
-                extension = os.path.splitext(st.session_state.uploaded_file.name)[1]
+                extension = os.path.splitext(file_item.name)[1]
                 with open("./static/temp_file"+extension, "wb") as f:
-                        f.write(st.session_state.uploaded_file.read())
+                        f.write(file_item.read())
 
-
-                if st.session_state.summary == "":
+                try:
+                    x = st.session_state.summary[index]
+                except:
                     if testing: 
-                        st.session_state.sentiment = pd.read_csv('sentiment.csv')
+                        st.session_state.sentiment += [pd.read_csv('sentiment.csv')]
                         with open("transcript.txt","r") as f: 
-                            st.session_state.transcription  = f.read()
+                            st.session_state.transcription  += [f.read()]
                         with open("transcript_summary.txt","r") as f: 
-                            st.session_state.summary = f.read()
+                            st.session_state.summary += [f.read()]
 
                     else: 
                         #####Relevant functions for transcription######
@@ -218,30 +225,33 @@ else:
 
                         # Once done, remove the temporary file if you wish
                         ###########
-                        st.session_state.transcription =(transcriptionClass.cleaned_string()).replace('\n','<br>')
-                        st.session_state.summary = (transcriptionClass.bart_summarize() + '<br><br>' + transcriptionClass.summarize_from_text(st.session_state.transcription,0.1)).replace('\n','<br>')
-                        st.session_state.sentiment = pd.json_normalize(transcriptionClass.getFullSentimentSpeakersArray())
-
+                        st.session_state.transcription +=[(transcriptionClass.cleaned_string()).replace('\n','<br>')]
+                        st.session_state.summary += [(transcriptionClass.bart_summarize() + '<br><br>' + transcriptionClass.summarize_from_text(st.session_state.transcription[index],0.1)).replace('\n','<br>')]
+                        st.session_state.sentiment += [pd.json_normalize(transcriptionClass.getFullSentimentSpeakersArray())]
+                
 
                 ##Save to DB functionality   
 
                 if 'save_mode' not in st.session_state:
-                    st.session_state.save_mode = False
+                    st.session_state.save_mode = []
+                try:
+                    x=st.session_state.save_mode[index]
+                except:
+                    st.session_state.save_mode+=[False]
 
-                col1, col2 = st.sidebar.columns(2)
+                col1,col2=st.columns(2)
+                if col1.button("Save "+str(index)):
+                    st.session_state.save_mode[index] =True
 
-                if col1.button("Save"):
-                    st.session_state.save_mode = True
-
-                if col2.button("Cancel"): 
-                    st.session_state.save_mode = False
-
-                if st.session_state.save_mode:
-
-                    st.sidebar.write("Select client and enter employee, then press Done")
+                if col2.button("Cancel "+str(index)): 
+                    st.session_state.save_mode[index] = False
 
 
-                        # Fetch client names from the Customers table
+                if st.session_state.save_mode[index]:
+
+                    st.write("Select client and enter employee, then press Done")
+
+                    # Fetch client names from the Customers table
                     c.execute("SELECT name FROM Customers")
                     client_names = [item[0] for item in c.fetchall()]
 
@@ -254,35 +264,38 @@ else:
                         #st.write(f'{selected_client} {employee_name} {call_type}')
                         #return ""
                         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                        df =  st.session_state.sentiment
-                        df = df.rename(columns={'sentiment_score.neg':'sentiment_score_neg'
-                                                ,'sentiment_score.neu':'sentiment_score_neu'
-                                                ,'sentiment_score.pos':'sentiment_score_pos'
-                                                ,'sentiment_score.overall':'sentiment_score_overall'
-                                                })
-                        c.execute("SELECT clientID FROM Customers WHERE cast(name as nvarchar(max))=?", (selected_client,))
-                        client_id = str(int(c.fetchone()[0]))
-                        recordingID = str(int(generateID()))
-                        df['recordingID'] = (recordingID)
-                        df['clientID'] = (client_id)
-                        df['date'] = current_time
-                        df[df.columns] = df[df.columns].astype(str)
-                        #st.dataframe(df)
-                        connection_str= (
-        "mssql+pyodbc://"+str(SQLUSER)+":"+str(SQLPASS)+"@opt-call-analyzer-server.database.windows.net:1433/OPTCallsAnalytics?"
-        "driver=ODBC+Driver+18+for+SQL+Server")
+                        if testing:
+                            st.write(("321312",selected_client,current_time,call_type,employee_name,"vdsfswfwegergver",st.session_state.uploaded_file[index].name, st.session_state.transcription[index], st.session_state.summary[index]))
+                        else:
+                            df =  st.session_state.sentiment[index]
+                            df = df.rename(columns={'sentiment_score.neg':'sentiment_score_neg'
+                                                    ,'sentiment_score.neu':'sentiment_score_neu'
+                                                    ,'sentiment_score.pos':'sentiment_score_pos'
+                                                    ,'sentiment_score.overall':'sentiment_score_overall'
+                                                    })
+                            c.execute("SELECT clientID FROM Customers WHERE cast(name as nvarchar(max))=?", (selected_client,))
+                            client_id = str(int(c.fetchone()[0]))
+                            recordingID = str(int(generateID()))
+                            df['recordingID'] = (recordingID)
+                            df['clientID'] = (client_id)
+                            df['date'] = current_time
+                            df[df.columns] = df[df.columns].astype(str)
+                        
+                            connection_str= (
+                                "mssql+pyodbc://"+str(SQLUSER)+":"+str(SQLPASS)+"@opt-call-analyzer-server.database.windows.net:1433/OPTCallsAnalytics?"
+                                "driver=ODBC+Driver+18+for+SQL+Server")
 
-                        engine = create_engine(connection_str)
-                        df.to_sql('callsRecords', engine, if_exists='append', index=False)
-                        c.execute("INSERT INTO customersCalls (clientID,name,date,callType,EmployeeName,recordingID,fileName, cleanTranscription, Summary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", 
-                                (client_id,selected_client,current_time,call_type,employee_name,recordingID,st.session_state.uploaded_file.name, st.session_state.transcription, st.session_state.summary))
-                        conn.commit()
-                        st.session_state.transcription = ""
-                        st.session_state.summary = ""
-                        st.session_state.uploaded_file = []
-                        #st.session_state.call_type = ""
-                        st.session_state.save_mode = False
-                        st.experimental_rerun()
+                            engine = create_engine(connection_str)
+                            df.to_sql('callsRecords', engine, if_exists='append', index=False)
+                            c.execute("INSERT INTO customersCalls (clientID,name,date,callType,EmployeeName,recordingID,fileName, cleanTranscription, Summary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+                                    (client_id,selected_client,current_time,call_type,employee_name,recordingID,st.session_state.uploaded_file[index].name, st.session_state.transcription[index], st.session_state.summary[index]))
+                            conn.commit()
+                            st.session_state.transcription[index] = ""
+                            st.session_state.summary[index] = ""
+                            #st.session_state.uploaded_file = []
+                            #st.session_state.call_type = ""
+                            st.session_state.save_mode[index] = False
+                            st.experimental_rerun()
 
                     client=""
                     name=""
@@ -291,7 +304,7 @@ else:
                     def set_form_state():
                         st.session_state.save_call=True
 
-                    with st.sidebar.form(key="testing_form",clear_on_submit=False):
+                    with st.form(key="testing_form",clear_on_submit=False):
                         # Dropdown to select a client
                         client = st.selectbox('Client', client_names)
                         name = st.selectbox('Employee Name', employees)
@@ -318,11 +331,20 @@ else:
 
 
                 ######################################## 
-
                 ##Accordions with all relevant information
                 with st.expander("Clear Transcription", expanded=False):
                     if 'fixLabels' not in st.session_state:
-                        st.session_state.fixLabels = False
+                        st.session_state.fixLabels=[]
+                    
+                    try:
+                        x=st.session_state.fixLabels[index]
+                    except:
+                        st.session_state.fixLabels+=[False]
+
+                    try:
+                        x=st.session_state.fixLabel_form[index]
+                    except:
+                        st.session_state.fixLabel_form+=[False]
 
                     st.markdown(
                         f"""
@@ -335,16 +357,16 @@ else:
                         unsafe_allow_html=True
                     )
 
-                    if not st.session_state.fixLabels:
-                        if st.button("Fix labels"):
-                             st.session_state.fixLabels = True
+                    if not st.session_state.fixLabels[index]:
+                        if st.button("Fix labels "+ str(index)):
+                             st.session_state.fixLabels[index] = True
                              st.experimental_rerun()  
 
 
                         st.markdown(
                             f"""
                             <div class="summary-container">
-                                {st.session_state.transcription}
+                                {st.session_state.transcription[index]}
                             </div>
                             """,
                             unsafe_allow_html=True
@@ -353,34 +375,34 @@ else:
                         summ1, summ2 = st.columns(2)
                         label_names = ['Caller', 'Agent']
 
-                        group_speakers = st.session_state.sentiment.groupby('speaker')['sentiment_score.overall']
+                        group_speakers = st.session_state.sentiment[index].groupby('speaker')['sentiment_score.overall']
                         current_speakers = list(group_speakers.groups.keys())
 
                         def update_labels_state():
-                            st.session_state.fixLabel_form = True
+                            st.session_state.fixLabel_form[index] = True
 
                         def update_labels(lA,lB):
                             if (lA and lB) and (lA!='Select New Label' and lB!='Select New Label'): 
                                 transcriptionFunctions = vr.voiceTranscription()
                                 replacements = {current_speakers[0]:lA, current_speakers[1]:lB}
-                                st.session_state.sentiment = replace_speakers(st.session_state.sentiment,replacements)
-                                st.session_state.transcription =(transcriptionFunctions.cleaned_string(rerun_array =(st.session_state.sentiment).to_dict('records'))).replace('\n','<br>')
-                                #st.session_state.summary = (transcriptionFunctions.bart_summarize(rerun_array =(st.session_state.sentiment).to_dict('records')) + '<br><br>' + transcriptionFunctions.summarize_from_text(st.session_state.transcription,0.1)).replace('\n','<br>')
-                                st.session_state.fixLabels = False
+                                st.session_state.sentiment[index] = replace_speakers(st.session_state.sentiment[index],replacements)
+                                st.session_state.transcription[index] =(transcriptionFunctions.cleaned_string(rerun_array =(st.session_state.sentiment[index]).to_dict('records'))).replace('\n','<br>')
+                                #st.session_state.summary = (transcriptionFunctions.bart_summarize(rerun_array =(st.session_state.sentiment[index]).to_dict('records')) + '<br><br>' + transcriptionFunctions.summarize_from_text(st.session_state.transcription,0.1)).replace('\n','<br>')
+                                st.session_state.fixLabels[index] = False
                                 st.experimental_rerun()  
                             else:
                                  st.warning("Fill both label fields")
 
                         if st.button("Exit"):
-                            st.session_state.fixLabels = False
+                            st.session_state.fixLabels[index] = False
                             st.experimental_rerun()  
                         with st.form(key='labels_update'):
                             labelA = selectbox_with_default(f'Current label: {current_speakers[0]}', label_names, default='Select New Label')
                             labelB = selectbox_with_default(f'Current label: {current_speakers[1]}', label_names, default='Select New Label')
                             st.form_submit_button("Update",on_click=update_labels_state)
 
-                        if st.session_state.fixLabel_form:
-                            st.session_state.fixLabel_form=False
+                        if st.session_state.fixLabel_form[index]:
+                            st.session_state.fixLabel_form[index]=False
                             update_labels(labelA,labelB)
 
 
@@ -394,7 +416,7 @@ else:
                     st.markdown(
                         f"""
                         <div class="summary-container">
-                        {st.session_state.summary}
+                        {st.session_state.summary[index]}
                         </div>
                         """,
                         unsafe_allow_html=True
@@ -404,8 +426,8 @@ else:
                 ################################
 
                 with st.expander("Sentiment Analysis", expanded=False):
-
-                    sentiment_scores = st.session_state.sentiment.groupby('speaker')['sentiment_score.overall']
+                    scores_sentiment = st.session_state.sentiment[index]
+                    sentiment_scores = scores_sentiment.groupby('speaker')['sentiment_score.overall']
                     sentiment_speakers = list(sentiment_scores.groups.keys())
 
                     fig_A = gauge_sentiment_plot(sentiment_scores.mean()[sentiment_speakers[0]],speaker=sentiment_speakers[0])
@@ -416,23 +438,28 @@ else:
                     st.pyplot(fig_B)
 
 
-                    negative_sentences = st.session_state.sentiment[st.session_state.sentiment['sentiment_score.overall']< -0.45]
-                    if negative_sentences.empty== False:
+                    negative_sentences = scores_sentiment[scores_sentiment['sentiment_score.overall']< -0.45]
+
+                    if not negative_sentences.empty:
                         st.subheader("Highly negative sentences:")
-                    for index,row in negative_sentences.iterrows():
+                    for ind,row in negative_sentences.iterrows():
                             st.markdown(f"""<div><b>&#x2022;Speaker: {row['speaker']} - Sentiment Score: {row['sentiment_score.overall']:.2f}:</b><br>  {row['text']}</div>""",
                             unsafe_allow_html=True)
 
+                    
+                    
+                    
+
 
                 ##########Toxicity###########
-                toxic_scores = st.session_state.sentiment
+                toxic_scores = st.session_state.sentiment[index]
                 #st.dataframe(toxic_scores)
                 toxic_scores = toxic_scores[(toxic_scores['toxicity'] > 0.3) | ( toxic_scores['insult'] > 0.3) |  (toxic_scores['obscene'] > 0.3) |  (toxic_scores['threat'] > 0.3)]
 
                 if not toxic_scores.empty:
                     with st.expander("Toxicity Analysis", expanded=False):
 
-                        for index,row in toxic_scores.iterrows():
+                        for ind,row in toxic_scores.iterrows():
                             st.write("Speaker "+ row['speaker'] +": "+ row['text'])
                             fig1 = linear_gauge("Toxicity", row['toxicity']*100)
                             st.plotly_chart(fig1,use_container_width=True, theme=None)
@@ -444,11 +471,11 @@ else:
 
 
                 # Bubble plots of word frequency
-                speaker_counts = Counter(st.session_state.sentiment['speaker'])
-                speakerA_text = st.session_state.sentiment[st.session_state.sentiment['speaker'] == list(speaker_counts.keys())[0]]['text']
+                speaker_counts = Counter(st.session_state.sentiment[index]['speaker'])
+                speakerA_text = st.session_state.sentiment[index][st.session_state.sentiment[index]['speaker'] == list(speaker_counts.keys())[0]]['text']
                 speakerA = ' '.join(speakerA_text)
 
-                speakerB_text = st.session_state.sentiment[st.session_state.sentiment['speaker'] == list(speaker_counts.keys())[1]]['text']
+                speakerB_text = st.session_state.sentiment[index][st.session_state.sentiment[index]['speaker'] == list(speaker_counts.keys())[1]]['text']
                 speakerB = ' '.join(speakerB_text)
 
 
@@ -466,14 +493,25 @@ else:
 
     #########################RUN HERE#########################################
      # Add a file uploader to the sidebar
-    uploaded_files = st.sidebar.file_uploader("Choose an audio file", type=['wav','mp3'],key=st.session_state["file_uploader_key"],accept_multiple_files=False)
-    process_data(uploaded_files)
-    #if len(uploaded_files) >=2:
-    #    st.warning('Only 5 files can be processed at a time', icon="❌")
-    #    if st.button("Clear uploaded files"):
-    #        st.session_state["file_uploader_key"] += 1
-    #        st.session_state.uploaded_file = []
-    #        st.experimental_rerun()
+    uploaded_files = st.sidebar.file_uploader("Choose an audio file", type=['wav','mp3'],key=st.session_state["file_uploader_key"],accept_multiple_files=True)
+    if not st.session_state.uploaded_file:
+        st.session_state.uploaded_file = uploaded_files
+
+    if len( st.session_state.uploaded_file) >3:
+        st.warning('Only 5 files can be processed at a time', icon="❌")
+        if st.button("Clear uploaded files"):
+            st.session_state["file_uploader_key"] += 1
+            st.session_state.uploaded_file = []
+            st.session_state.save_mode = []
+            st.experimental_rerun()
+    else: 
+        if len( st.session_state.uploaded_file) > 0:
+            tabs = [item.name for item in  st.session_state.uploaded_file]
+            tabs_list = st.tabs(tabs)
+
+            for i, item in enumerate(tabs):
+                with tabs_list[i]:
+                    process_data( st.session_state.uploaded_file[i],i)
 
 
 

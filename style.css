@@ -60,6 +60,25 @@
     max-height: 800px;
 }
 
+.css-19rxjzo {
+    display: inline-flex;
+    -webkit-box-align: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    justify-content: center;
+    font-weight: 400;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.5rem;
+    min-height: 38.4px;
+    margin: 0px;
+    line-height: 1.6;
+    color: inherit;
+    width: 300px;
+    user-select: none;
+    background-color: rgb(19, 23, 32);
+    border: 1px solid rgba(250, 250, 250, 0.2);
+}
+
 .sxep88s {
     display: none;
 }
